@@ -7,31 +7,40 @@ document.addEventListener('DOMContentLoaded', () => {
   
     // Função para adicionar uma nova tarefa
     function adicionarNovaTarefa() {
-      const tarefa = input.value.trim(); // Obter o valor do campo de entrada, removendo espaços em branco
-  
+      const tarefa = input.value.trim();
+    
       if (tarefa) {
-        // Se a tarefa não estiver em branco
-        minhaListaDeItens.push({ tarefa, concluida: false }); // Adicionar a tarefa à lista de tarefas
-        input.value = ''; // Limpar o campo de entrada
-        mostrarTarefas(); // Atualizar a exibição das tarefas na lista
+        fetch('http://localhost:3002/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ task: tarefa }),
+        })
+        .then((response) => response.json())
+        .then(() => {
+          input.value = '';  // Limpar o campo de input
+          recarregarTarefas();  // Recarregar a lista de tarefas
+        });
       }
     }
+    
   
     // Função para atualizar a exibição das tarefas na lista
     function mostrarTarefas() {
       const tarefaListItems = minhaListaDeItens.map((item, posicao) => {
-        // Mapear a lista de tarefas em elementos HTML
+        // Verificar o nome da tarefa
+        console.log(item); // Isso ajudará a verificar se o nome da tarefa está correto
+    
         return `
           <li class="task ${item.concluida ? 'done' : ''}">
-            <img src="./img/checked.png" alt="check-na-tarefa" data-posicao="${posicao}" class="check-task">
-            <p>${item.tarefa}</p>
-            <img src="./img/trash.png" alt="tarefa-para-o-lixo" data-posicao="${posicao}" class="delete-task">
+            <img src="/img/checked.png" alt="check-na-tarefa" data-posicao="${posicao}" class="check-task">
+            <p>${item.task}</p>  <!-- Aqui você deve usar o nome correto do campo -->
+            <img src="/img/trash.png" alt="tarefa-para-o-lixo" data-posicao="${posicao}" class="delete-task">
           </li>
         `;
-      }).join(''); // Unir os elementos HTML em uma string
-  
-      listaCompleta.innerHTML = tarefaListItems; // Atualizar o conteúdo da lista de tarefas no DOM
-      localStorage.setItem('lista', JSON.stringify(minhaListaDeItens)); // Armazenar a lista de tarefas no localStorage
+      }).join('');
+    
+      listaCompleta.innerHTML = tarefaListItems;
+      localStorage.setItem('lista', JSON.stringify(minhaListaDeItens));
     }
   
     // Função para marcar ou desmarcar uma tarefa como concluída
@@ -42,21 +51,40 @@ document.addEventListener('DOMContentLoaded', () => {
   
     // Função para deletar uma tarefa
     function deletarItem(posicao) {
-      minhaListaDeItens.splice(posicao, 1); // Remover a tarefa da lista
-      mostrarTarefas(); // Atualizar a exibição das tarefas na lista
+      const tarefa = minhaListaDeItens[posicao];
+      
+      // Deletar a tarefa no backend
+      fetch(`http://localhost:3002/tasks/${tarefa.id}`, {
+        method: 'DELETE',
+      })
+      .then((response) => {
+        if (response.ok) {
+          // Remover a tarefa da lista local
+          minhaListaDeItens.splice(posicao, 1); 
+          mostrarTarefas(); // Atualizar a exibição das tarefas
+        } else {
+          console.error('Erro ao deletar tarefa no backend');
+        }
+      })
+      .catch((error) => {
+        console.error('Erro ao conectar com o servidor:', error);
+      });
     }
   
     // Função para recarregar as tarefas do localStorage
     function recarregarTarefas() {
-      const tarefasDoLocalStorage = localStorage.getItem('lista'); // Obter as tarefas armazenadas no localStorage
-  
-      if (tarefasDoLocalStorage) {
-        // Se houver tarefas no localStorage
-        minhaListaDeItens = JSON.parse(tarefasDoLocalStorage); // Carregar as tarefas na lista
-      }
-  
-      mostrarTarefas(); // Atualizar a exibição das tarefas na lista
+      fetch('http://localhost:3002/tasks')
+        .then((response) => response.json())
+        .then((data) => {
+          console.log(data); // Verifique o que é retornado aqui
+          minhaListaDeItens = data;
+          mostrarTarefas();
+        })
+        .catch((error) => {
+          console.error('Erro ao carregar tarefas:', error);
+        });
     }
+    
   
     // Função para lidar com a tecla Enter pressionada no campo de entrada
     function handleKeyPress(event) {
